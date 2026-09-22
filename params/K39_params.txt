@@ -1,0 +1,39 @@
+// parameter file for molConv Monte Carlo
+// command line: molConv.exe -p single_params.txt
+
+num_species = 1
+species_0 = K39
+mass_0 = 39
+statistics_0   = BoseEinstein
+statistics_mol = MaxwellBoltzmann
+N_0 = 20000
+T_0 = 50
+fx_0 = 100.0
+fy_0 = 100.0
+fz_0 = 50.0
+size_0 = 1.0
+error_allowed = 1e-11
+step_size = 0.1
+repeat = 1
+distance_measure = delta_x*delta_p
+gamma = 0.38
+threads = 8
+num_bins = 300
+distribution_generator = Metropolis
+random_number_generator = Lehmer128
+result_file     = ./tmp/single_result.dat
+histogram_file  = ./tmp/single_histogram.dat
+
+// if file names given export atoms and molecules for further analysis
+// file names are appended with species names and repetition number
+
+// export_atom_0   = ./tmp/single_atom.csv
+// export_molecule = ./tmp/single_molecule.csv
+
+// when neighbors_file is given: creates two files with neighbors_num nearest neighbors of both species
+// file names are appended with species names and repetition number
+// note: files can be big and creation is slow (running on single thread)
+
+//neighbors_file  = ./tmp/single_neighbors.csv
+//neighbors_num   = 1
+
