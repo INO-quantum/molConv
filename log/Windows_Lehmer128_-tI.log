@@ -1,0 +1,124 @@
+
+********************************************************************************
+2026-09-21 17:07:42.051380
+PractRand test 1/1 generator Lehmer128 with size = 128GB
+
+using random number generator 'Lehmer128'
+info: using 2 random hardware seed values
+info: got   2 seed values: {0x9012db3b,0xed87b425}
+
+note: stdout set to binary mode!
+STREAMING on stdout using Lehmer128 (uniform distributed int64) ... 
+RNG_test using PractRand version 0.94
+RNG = RNG_stdin64, seed = {0x9012db3b,0xed87b425}
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 256 megabytes (2^28 bytes), time= 2.9 seconds
+  Test Name                         Raw       Processed     Evaluation
+  DC6-9x1Bytes-1                    R=  +6.7  p =  1.5e-3   unusual          
+  ...and 209 test result(s) without anomalies
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 512 megabytes (2^29 bytes), time= 6.1 seconds
+  Test Name                         Raw       Processed     Evaluation
+  DC6-9x1Bytes-1                    R=  +6.9  p =  8.7e-4   unusual          
+  ...and 225 test result(s) without anomalies
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 1 gigabyte (2^30 bytes), time= 12.2 seconds
+  no anomalies in 243 test result(s)
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 2 gigabytes (2^31 bytes), time= 23.2 seconds
+  no anomalies in 261 test result(s)
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 4 gigabytes (2^32 bytes), time= 44.4 seconds
+  no anomalies in 277 test result(s)
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 8 gigabytes (2^33 bytes), time= 87.8 seconds
+  no anomalies in 294 test result(s)
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 16 gigabytes (2^34 bytes), time= 174 seconds
+  no anomalies in 310 test result(s)
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 32 gigabytes (2^35 bytes), time= 342 seconds
+  no anomalies in 325 test result(s)
+
+rng=RNG_stdin64, seed={0x9012db3b,0xed87b425}
+length= 64 gigabytes (2^36 bytes), time= 693 seconds
+  Test Name                         Raw       Processed     Evaluation
+  TMFn(2+11):wl                     R= +55.7  p~=   1e-26     FAIL !!        
+  [Low16/64]TMFn(2+9):wl            R= +57.8  p~=   9e-28     FAIL !!        
+  [Low4/64]TMFn(2+7):wl             R= +59.0  p~=   1e-28     FAIL !!        
+  ...and 337 test result(s) without anomalies
+
+
+********************************************************************************
+2026-09-21 17:19:15.762234
+PractRand test 1/1 generator Lehmer128 with size = 128GB
+done in 693.0 seconds, result = FAIL!
+
+********************************************************************************
+2026-09-22 22:22:00.018016
+PractRand test 1/1 generator Lehmer128 with size = 1TB
+
+using random number generator 'Lehmer128'
+info: using 2 random hardware seed values
+info: got   2 seed values: {0x81a44421,0xbe9f925}
+
+note: stdout set to binary mode!
+STREAMING on stdout using Lehmer128 (uniform distributed int64) ... 
+RNG_test using PractRand version 0.94
+RNG = RNG_stdin64, seed = {0x81a44421,0xbe9f925}
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 256 megabytes (2^28 bytes), time= 2.9 seconds
+  no anomalies in 210 test result(s)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 512 megabytes (2^29 bytes), time= 5.9 seconds
+  no anomalies in 226 test result(s)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 1 gigabyte (2^30 bytes), time= 11.7 seconds
+  no anomalies in 243 test result(s)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 2 gigabytes (2^31 bytes), time= 22.3 seconds
+  no anomalies in 261 test result(s)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 4 gigabytes (2^32 bytes), time= 43.0 seconds
+  no anomalies in 277 test result(s)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 8 gigabytes (2^33 bytes), time= 84.9 seconds
+  no anomalies in 294 test result(s)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 16 gigabytes (2^34 bytes), time= 169 seconds
+  no anomalies in 310 test result(s)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 32 gigabytes (2^35 bytes), time= 331 seconds
+  no anomalies in 325 test result(s)
+
+rng=RNG_stdin64, seed={0x81a44421,0xbe9f925}
+length= 64 gigabytes (2^36 bytes), time= 668 seconds
+  Test Name                         Raw       Processed     Evaluation
+  TMFn(2+11):wl                     R= +63.5  p~=   3e-31     FAIL !!!       
+  [Low16/64]TMFn(2+9):wl            R= +62.4  p~=   1e-30     FAIL !!!       
+  [Low4/64]TMFn(2+7):wl             R= +61.8  p~=   4e-30     FAIL !!!       
+  ...and 337 test result(s) without anomalies
+
+
+********************************************************************************
+2026-09-22 22:33:08.956117
+PractRand test 1/1 generator Lehmer128 with size = 1TB
+done in 668.0 seconds, result = FAIL!

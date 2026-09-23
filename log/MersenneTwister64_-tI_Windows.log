@@ -1,0 +1,133 @@
+
+********************************************************************************
+2026-09-21 16:33:36.539428
+PractRand test 1/1 generator MersenneTwister64 with size = 128GB
+
+using random number generator 'MersenneTwister64'
+info: using 2 random hardware seed values
+info: got   2 seed values: {0x96ca6802,0x5917fb82}
+
+note: stdout set to binary mode!
+STREAMING on stdout using MersenneTwister64 (uniform distributed int64) ... 
+RNG_test using PractRand version 0.94
+RNG = RNG_stdin64, seed = {0x96ca6802,0x5917fb82}
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 256 megabytes (2^28 bytes), time= 2.2 seconds
+  no anomalies in 210 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 512 megabytes (2^29 bytes), time= 4.5 seconds
+  no anomalies in 226 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 1 gigabyte (2^30 bytes), time= 8.9 seconds
+  no anomalies in 243 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 2 gigabytes (2^31 bytes), time= 18.7 seconds
+  no anomalies in 261 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 4 gigabytes (2^32 bytes), time= 39.5 seconds
+  no anomalies in 277 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 8 gigabytes (2^33 bytes), time= 82.4 seconds
+  no anomalies in 294 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 16 gigabytes (2^34 bytes), time= 168 seconds
+  no anomalies in 310 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 32 gigabytes (2^35 bytes), time= 333 seconds
+  no anomalies in 325 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 64 gigabytes (2^36 bytes), time= 675 seconds
+  no anomalies in 340 test result(s)
+
+rng=RNG_stdin64, seed={0x96ca6802,0x5917fb82}
+length= 128 gigabytes (2^37 bytes), time= 1353 seconds
+  no anomalies in 355 test result(s)
+
+
+********************************************************************************
+2026-09-21 16:56:10.477073
+PractRand test 1/1 generator MersenneTwister64 with size = 128GB
+done in 1353.0 seconds, result = SUCCESS
+
+********************************************************************************
+2026-09-23 01:21:54.109659
+PractRand test 1/1 generator MersenneTwister64 with size = 1TB
+
+using random number generator 'MersenneTwister64'
+info: using 2 random hardware seed values
+info: got   2 seed values: {0x39edfb4f,0xb014912a}
+
+note: stdout set to binary mode!
+STREAMING on stdout using MersenneTwister64 (uniform distributed int64) ... 
+RNG_test using PractRand version 0.94
+RNG = RNG_stdin64, seed = {0x39edfb4f,0xb014912a}
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 256 megabytes (2^28 bytes), time= 2.7 seconds
+  no anomalies in 210 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 512 megabytes (2^29 bytes), time= 5.7 seconds
+  no anomalies in 226 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 1 gigabyte (2^30 bytes), time= 11.1 seconds
+  no anomalies in 243 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 2 gigabytes (2^31 bytes), time= 21.4 seconds
+  Test Name                         Raw       Processed     Evaluation
+  mod3n(5):(4,9-1)                  R=  +9.7  p =  9.8e-6   mildly suspicious
+  ...and 260 test result(s) without anomalies
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 4 gigabytes (2^32 bytes), time= 41.3 seconds
+  no anomalies in 277 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 8 gigabytes (2^33 bytes), time= 81.4 seconds
+  no anomalies in 294 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 16 gigabytes (2^34 bytes), time= 162 seconds
+  no anomalies in 310 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 32 gigabytes (2^35 bytes), time= 317 seconds
+  no anomalies in 325 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 64 gigabytes (2^36 bytes), time= 642 seconds
+  no anomalies in 340 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 128 gigabytes (2^37 bytes), time= 1284 seconds
+  no anomalies in 355 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 256 gigabytes (2^38 bytes), time= 2532 seconds
+  no anomalies in 369 test result(s)
+
+rng=RNG_stdin64, seed={0x39edfb4f,0xb014912a}
+length= 512 gigabytes (2^39 bytes), time= 5177 seconds
+  Test Name                         Raw       Processed     Evaluation
+  BRank(12):24K(1)                  R=+99759  p~= 0           FAIL !!!!!!!!  
+  [Low16/64]BRank(12):16K(1)        R= +1165  p~=  1.3e-351   FAIL !!!!!!!   
+  ...and 381 test result(s) without anomalies
+
+
+********************************************************************************
+2026-09-23 02:48:12.677283
+PractRand test 1/1 generator MersenneTwister64 with size = 1TB
+done in 5178.0 seconds, result = FAIL!

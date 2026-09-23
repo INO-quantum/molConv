@@ -9,39 +9,44 @@ from struct import unpack
 
 # test random number generators (RNG) with PractRand (0.94)
 # created 21/9/2026 by Andi
-# last change 21/9/2026 by Andi
+# last change 23/9/2026 by Andi
 
-# TODO: update summary which is out of date.
 # TODO: finish select() for windows
-# TODO: when PractRand finishs should see output of molConv on stderr but I do not see this. 
-#       maybe molConv crashes or takes too long?
-
-# - all 32bit RNG tests fail miserably!
-# - Ranlux48 gives uint_fast64_t but fails test -tI/-tD indicating it cannot be used for generation of 64bit random numbers!
-# - all 64bit RNG tests pass.
-# - WELL1024 passes -tf test but fails -ti this is strange!? maybe has a longer period like this?
-# - MersenneTwister64 should fail at about 512GB.
-# - the two normally distributed tests fail at the moment since would need to convert it back into uniform distributed.
-# - conclusion: do not use 32bit generators! use only 64bit generator even when floats are used in further calculation!
+# TODO: when PractRand finishs should see output of molConv on stderr but I do not see this on Linux (on Windows ok). 
+# TODO: send individual bytes to PractRand for Ranlux24/48. maybe then they are not as bad?
+# TODO: try better mapping for -tN, -tn tests. maybe this can be fixed?
 
 # summary
 # test  output  RNG32   RNG48   RNG64   remark 
-# -ti   32bit   fail    ok      ok      direct integer 32bit output
-# -td   32bit   fail    ok      ok      float to integer 32bit conversion
+# -ti   32bit   fail    ok**    ok**    direct integer 32bit output
+# -td   32bit   fail    ok**    ok**    float to integer 32bit conversion
 # -tn   32bit   fail    fail    fail    normal distributed float to integer 32bit conversion
-# -tI   64bit   fail    fail    ok      direct integer 64bit output   
+# -tI   64bit   fail    fail    fail*   direct integer 64bit output   
 # -tD   64bit   fail    fail    ok      double to integer 64bit conversion
 # -tN   64bit   fail    fail    fail    normal distributed double to integer 64bit conversion
 # none  -       -       -         -     self-test, stop with Ctrl-C
 
+# - all 32bit RNG tests fail fast and miserably!
+# - Ranlux24/48 fail but I have tested them assuming they give 32/64bits which is possibly wrong? however, they are slow.
+# + test -tI: all 64bit RNG tests pass for 1TB size
+# * test -tI: MersenneTwister64 fails  at 512GB - this is known
+#             Lehmer64/128      fail   at  64GB - failure is known but at this small size?
+#             Wyhash64          passes for  1TB - maybe it fails for larger size?
+# ** these pass tests -ti and -td but I have not tested large size!
+# - WELL1024 passes -tf test (but checked only small size) but fails test -ti
+# - the two normally distributed tests -tN and -tn all fail. I am sure this is the conversion from normal back to uniform distribution.
+# - preliminary conclusion: do not use 24/32/48bit generators! 
+#                           all 64bit generator should be fine for the Monte-Carlo since we use double and not the integer.
+
 # test type
-TEST_i = '-ti'
-TEST_I = '-tI'
-TEST_d = '-td'
-TEST_D = '-tD'
-TEST_n = '-tn'
-TEST_N = '-tN'
-TESTS  = [TEST_i, TEST_I, TEST_d, TEST_D, TEST_n, TEST_N]
+TEST_none = None # TODO: is most likely not working now
+TEST_i    = '-ti'
+TEST_I    = '-tI'
+TEST_d    = '-td'
+TEST_D    = '-tD'
+TEST_n    = '-tn'
+TEST_N    = '-tN'
+TESTS     = [TEST_i, TEST_I, TEST_d, TEST_D, TEST_n, TEST_N]
 test = '-tD'
 
 # number of repetitions (>=1)
@@ -78,7 +83,7 @@ PractRand_fail  = 'FAIL'
 PractRand_warn  = ['unusual', 'suspicious', 'SUSPICIOUS']
 
 # log file output (%s=RNG, %s=test)
-log = "./log/%s_%s.log"
+log = "./log/%s_%s_Linux.log"
 
 # seed to be used. None = hardware generated (default)
 seed = [None, "{100,200,300,400}"][0]
