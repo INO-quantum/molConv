@@ -7,10 +7,7 @@
 #   all output files and folders are generated in this folder. 
 #   this works also on Windows, so no absolute path is needed or "\\".
 # - run "python molConv_run.py" or "python3 molConv_run.py"
-# last change 22/9/2026 by Andi
-
-# TODO: not all figures have been updated after changes and might give missing keys errors.
-#       use figure = None as reference which is working. 
+# last change 23/9/2026 by Andi
 
 import numpy as np
 from mpmath import polylog, re, im
@@ -27,12 +24,50 @@ plt.rcParams['font.size'] = 10
 plt.rcParams['axes.linewidth'] = 2
 mpl.rcParams["savefig.directory"] = os.path.dirname(__file__) # save to current directy
 
-#colors = cm.get_cmap('tab20')
+# select figure to generate
+figure = [None, 'LiCr_v1.2', 'PSD-Ale'][0]
+
+# if True recalculate existing results, otherwise just plot results
+recalc = True
+
+# general output folder
+# note: relative path and '/' works also on Windows. 
+folder = './tmp/'
+#folder = './test_cases/20260827_v1.6/Greene/'
+
+# if not None generate histogram and atoms/molecule files with this filename in same folder as result file.
+# attention: files might be large and generation might take some time!
+histogram_file  = [None, '_hist.dat'    ][0]
+export_atom_0   = [None, '_atom0.csv'   ][0]
+export_atom_1   = [None, '_atom1.scv'   ][0]
+export_molecule = [None, '_molecule.csv'][0]
+
+# number of bins for histogram
+num_bins = 300
+
+# parameters for calculation of chemical potential
+error_allowed = 1e-11
+step_size     = 0.1
+
+# offset of 2nd species
+offset = [0,0,0]
+
+# if 0 stops at first matching pair (default, faster), otherwise searches nearest pair (slower)
+find_nearest = 0
+
+# show T/Tc or T/TF of second species as twin axis
+show_second_species = True
+
+# acceptable timing error in s
+t_err = 1e-3
+
+# seed values if not None. (must be within {} and ',' as separator. no spaces allowed. several values allowed, >2 not really needed )
+seed = [None, "{0x53b2c9e8,0x869c86ac}"][0]
 
 # path to molConv executable
-if os.name == 'nt':
-    molConv_path = r"./molConv_VisualStudio/x64/Release/molConv"
-else:
+if os.name == 'nt': # Windows
+    molConv_path = r"./molConv_Visual-Studio/x64/Release/molConv"
+else: # Linux
     molConv_path = r"./molConv"
 
 # constants
@@ -54,39 +89,6 @@ np.set_printoptions(precision=6, linewidth=150, formatter={'float': lambda x: '%
 # predefined molecules and parameters
 ################################################################################################
     
-K40K40 = { 
-    'label'     : 'K40K40',         # label used for result directory and plotting
-    'species'   : ['K40','K40'],    # name per species
-    'mass'      : [40   , 40  ],    # mass per species in amu
-    'atom_stat' : ['FermiDirac','FermiDirac'], # statistics of both species
-    'mol_stat'  : 'MaxwellBoltzmann',          # statistics of molecule
-}
-
-K39K39 = { 
-    'label'     : 'K39K39',         # label used for result directory and plotting
-    'species'   : ['K39','K39'],    # name per species
-    'mass'      : [39   , 39  ],    # mass per species in amu
-    'atom_stat' : ['BoseEinstein','BoseEinstein'], # statistics of both species
-    'mol_stat'  : 'MaxwellBoltzmann',              # statistics of molecule
-}
-
-K40K39 = { 
-    'label'     : 'K40K39',         # label used for result directory and plotting
-    'species'   : ['K40','K39'],    # name per species
-    'mass'      : [40   , 39  ],    # mass per species in amu
-    'atom_stat' : ['FermiDirac','BoseEinstein'], # statistics of both species
-    'mol_stat'  : 'MaxwellBoltzmann',            # statistics of molecule
-}
-
-K39K41 = { 
-    'label'     : 'K39K41',         # label used for result directory and plotting
-    'species'   : ['K39','K41'],    # name per species
-    'mass'      : [39   , 41  ],    # mass per species in amu
-    'atom_stat' : ['BoseEinstein','BoseEinstein'], # statistics of both species
-    'mol_stat'  : 'MaxwellBoltzmann',            # statistics of molecule
-}
-
-
 #U_ratio = 0.5                       # trap depth ratio U_Cr/U_Li
 Li6Cr53 = { 
     'label'     : 'Li6Cr53',        # label used for result directory and plotting
@@ -94,11 +96,6 @@ Li6Cr53 = {
     'mass'      : [6    , 53   ],   # mass per species in amu
     'atom_stat' : ['FermiDirac','FermiDirac'], # statistics of both species
     'mol_stat'  : 'MaxwellBoltzmann',          # statistics of molecule
-    #'N'         : [10000, 10000],   # atom number per species
-    #'T'         : [150  , 150],     # temperature in nK (might be overwritten)
-    #'f_rad'     : [100, 100*np.sqrt(U_ratio*6/53)], # radial (x) trap frequency in Hz
-    #'f_vert'    : [100, 100*np.sqrt(U_ratio*6/53)], # vertical (y) trap frequencies in Hz
-    #'f_ax'      : [ 15,  10],   # axial (z) trap frequency in Hz
 }
 
 Li6Cr52 = { 
@@ -107,11 +104,6 @@ Li6Cr52 = {
     'mass'      : [6    , 52   ],   # mass per species in amu
     'atom_stat' : ['FermiDirac','BoseEinstein'], # statistics of both species
     'mol_stat'  : 'MaxwellBoltzmann',            # statistics of molecule
-    #'N'         : [10000, 10000],   # atom number per species
-    #'T'         : [150  , 150],     # temperature in nK (might be overwritten)
-    #'f_rad'     : [100, 100*np.sqrt(U_ratio*6/53)], # radial (x) trap frequency in Hz
-    #'f_vert'    : [100, 100*np.sqrt(U_ratio*6/53)], # vertical (y) trap frequencies in Hz
-    #'f_ax'      : [ 15,  10],       # axial (z) trap frequency in Hz
 }
 
 Li6Cr50 = {
@@ -120,11 +112,6 @@ Li6Cr50 = {
     'mass'      : [6    , 50   ],   # mass per species in amu
     'atom_stat' : ['FermiDirac','BoseEinstein'], # statistics per species
     'mol_stat'  : 'MaxwellBoltzmann',            # statistics of molecule
-    #'N'         : [10000, 10000],   # atom number per species
-    #'T'         : [150  , 150],     # temperature in nK (might be overwritten)
-    #'f_rad'     : [100, 100*np.sqrt(U_ratio*6/53)], # radial (x) trap frequency in Hz
-    #'f_vert'    : [100, 100*np.sqrt(U_ratio*6/53)], # vertical (y) trap frequencies in Hz
-    #'f_ax'      : [ 15,  10],       # axial (z) trap frequency in Hz
 }
 
 # available distance measures and corresponding labels for plotting
@@ -162,439 +149,17 @@ def dict_update(d, u, invert=False):
             c[key] = value
     return c
 
-# select figure to generate
-figure = ['Greene2a', 'Greene2b', 'Greene2c', 'Greene2c-inv', 
-          'timing', 'threads', 
-          'LiCr_v1.2', 'test_data', 
-          None][-1]
-
-if figure == 'Greene2a':
-    # this takes about 10' per molecule on my laptop
-    
-    # plot title
-    title = 'K40K40 molecule conversion efficiency vs. distance measures (Greene Fig. 2a)'
-
-    # atom number and trapping frequencies
-    N       = [30000, 30000]    # atom number per species
-    f_rad   = [470, 470]        # radial (x) trap frequency in Hz
-    f_vert  = [470, 470]        # vertical (y) trap frequencies in Hz
-    f_ax    = [6.7, 6.7]        # axial (z) trap frequency in Hz
-
-    # variation
-    # vary T/TF of first species, T[1] = T[0]
-    vary        = 'T0=T1'
-    vary_values = np.linspace(0.1, 1.6, 8) # scaling of T/TF 
-
-    # random number and distribution generators
-    rng = 'Lehmer128'
-    dng = 'Metropolis'
-    
-    # other settings
-    threads = 8
-    reps    = 5
-
-    # dict of molecule settings.
-    # first species is varied, second is fixed or varied accordingly (see vary options).
-    molecules = {
-        'K40K40a': dict_update(K40K40, {
-            'label'             : 'K40K40',        
-            'rng'               : rng,
-            'dng'               : dng,
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'data_args'         : [{'color': 'Red'}],
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'N'                 : N,                            # atom number per species
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'threads'           : threads,                      # number of threads
-            'repetitions'       : reps,                         # repetitions per variation
-            'calc_size'         : [1.0,1.0],                    # calculation size scaling
-        }),
-    }
-    if False: 
-        molecules = {
-        'K40K39a': dict_update(K40K39, {
-            'label'             : 'K40K39-test',
-            'rng'               : rng,
-            'dng'               : dng,
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.38,
-            'data_args'         : [{'color': 'Blue'}],
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'N'                 : N,                            # atom number per species
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'threads'           : threads,                      # number of threads
-            'repetitions'       : reps,                         # repetitions per variation
-            'calc_size'         : [1.0,1.0],                    # calculation size scaling
-        }),
-        'K39K40a': dict_update(K40K39, {
-            'label'             : 'K39K40',
-            'rng'               : rng,
-            'dng'               : dng,
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.38,
-            'data_args'         : [{'color': 'Violet'}],
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'N'                 : N,                            # atom number per species
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'threads'           : threads,                      # number of threads
-            'repetitions'       : reps,                         # repetitions per variation
-            'calc_size'         : [1.0,1.0],                    # calculation size scaling
-        }, invert=True),
-        'K39K39a': dict_update(K39K39, {
-            'rng'               : rng,
-            'dng'               : dng,
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'data_args'         : [{'color': 'Green'}],
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'N'                 : N,                            # atom number per species
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'threads'           : threads,                      # number of threads
-            'repetitions'       : reps,                         # repetitions per variation
-            'calc_size'         : [1.0,1.0],                    # calculation size scaling
-        }),
-        'K39K41a': dict_update(K39K41, {
-            'rng'               : rng,
-            'dng'               : dng,
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'data_args'         : [{'color': 'Orange'}],
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'N'                 : N,                            # atom number per species
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'threads'           : threads,                      # number of threads
-            'repetitions'       : reps,                         # repetitions per variation
-            'calc_size'         : [1.0,1.0],                    # calculation size scaling
-        }),
-    }
-    if False: 
-        molecules = {
-        'K40K40b': dict_update(K40K40, {
-            'distance measure'  : 'cross(delta_x^,delta_p^)',
-            'gamma'             : 0.26*3,
-            'color'             : 'Green',
-            'N'                 : N,                            # atom number per species
-            #'T'                 : T,                            # temperature in nK (not used)
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'vary'              : vary,
-            'vary_values'       : vary_values,    
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K40K40c': dict_update(K40K40, {
-            'distance measure'  : '<delta_x*delta_p>',
-            'gamma'             : 0.0085*2,
-            'color'             : 'Blue',
-            'N'                 : N,                            # atom number per species
-            #'T'                 : T,                            # temperature in nK (not used)
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K40K40d': dict_update(K40K40, {
-            'distance measure'  : 'max|delta_xi*delta_pi|',
-            'gamma'             : 0.050*2,
-            'color'             : 'Violet',
-            'N'                 : N,                            # atom number per species
-            #'T'                 : T,                            # temperature in nK (not used)
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K40K40(MB)': dict_update(K40K40, {
-            'label'             : 'K40K40(MB)',
-            'atom_stat'         : ['MaxwellBoltzmann','MaxwellBoltzmann'],
-            'mol_stat'          : 'MaxwellBoltzmann',
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'color'             : 'Black',
-            'N'                 : N,                            # atom number per species
-            'T'                 : [310, 310],                   # use K40 TF for scaling
-            'f_rad'             : f_rad,                        # radial (x) trap frequency in Hz
-            'f_vert'            : f_vert,                       # vertical (y) trap frequencies in Hz
-            'f_ax'              : f_ax,                         # axial (z) trap frequency in Hz
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        }
-
-elif figure == 'Greene2b':
-
-    # plot title
-    title = 'K39K39 molecule conversion efficiency vs. distance measures (Greene Fig. 2b)'
-
-    # variation
-    # vary T/Tc of first species, T[1] = T[0]
-    vary        = 'T0=T1'
-    vary_values = np.linspace(0.1, 1.6, 16) # scaling of T/Tc 
-    vary_fixed  = None # not used
-
-    # dict of molecule settings.
-    # first species is varied, second is fixed or varied accordingly (see vary options).
-    molecules = {
-        'K39K39a': dict_update(K39K39, {
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'color'             : 'Red',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K39K39b': dict_update(K39K39, {
-            'distance measure'  : 'cross(delta_x^,delta_p^)',
-            'gamma'             : 0.26*3,
-            'color'             : 'Green',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K39K39c': dict_update(K39K39, {
-            'distance measure'  : '<delta_x*delta_p>',
-            'gamma'             : 0.0085*2,
-            'color'             : 'Blue',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K39K39d': dict_update(K39K39, {
-            'distance measure'  : 'max|delta_xi*delta_pi|',
-            'gamma'             : 0.050*2,
-            'color'             : 'Violet',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K39K39(MB)': dict_update(K39K39, {
-            'label'             : 'K39K39(MB)',
-            'T'                 : [160, 160], # use K39 Tc for scaling
-            'atom_stat'         : ['MaxwellBoltzmann','MaxwellBoltzmann'],
-            'mol_stat'          : 'MaxwellBoltzmann',
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'color'             : 'Black',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-    }
-elif figure == 'Greene2c':
-    # plot title
-    title = 'K39K40 molecule conversion efficiency vs. distance measures (Greene Fig. 2c)'
-
-    # variation
-    # vary T/Tc of first species, T[1] = T[0]
-    vary        = 'T0=T1'
-    vary_values = np.linspace(0.05, 1.6, 32) # scaling of T/Tc 
-    vary_fixed  = None # not used
-
-    # dict of molecule settings.
-    # first species is varied, second is fixed or varied accordingly (see vary options).
-    molecules = {
-        'K39K40a': dict_update(K40K39, {
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'color'             : 'Red',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }, invert=True), 
-        'K39K40b': dict_update(K40K39, {
-            'distance measure'  : 'cross(delta_x^,delta_p^)',
-            'gamma'             : 0.26*3,
-            'color'             : 'Green',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }, invert=True), 
-        'K39K40c': dict_update(K40K39, {
-            'distance measure'  : '<delta_x*delta_p>',
-            'gamma'             : 0.0085*2,
-            'color'             : 'Blue',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }, invert=True), 
-        'K39K40d': dict_update(K40K39, {
-            'distance measure'  : 'max|delta_xi*delta_pi|',
-            'gamma'             : 0.050*2,
-            'color'             : 'Violet',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }, invert=True), 
-        'K39K40(MB)': dict_update(K40K39, {
-            'label'             : 'K39K40(MB)',
-            'T'                 : [160, 160], # use K39 Tc for scaling
-            'atom_stat'         : ['MaxwellBoltzmann','MaxwellBoltzmann'],
-            'mol_stat'          : 'MaxwellBoltzmann',
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'color'             : 'Black',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }, invert=True), 
-    }
-
-elif figure == 'Greene2c-inv':
-    # plot title
-    title = 'K40K39 molecule conversion efficiency vs. distance measures (Greene Fig. 2c, vary K40 instead of K39)'
-
-    # variation
-    # vary T/Tc of first species, T[1] = T[0]
-    vary        = 'T0=T1'
-    vary_values = np.linspace(0.1, 1.6, 16) # scaling of T/Tc 
-    vary_fixed  = None # not used
-
-    # dict of molecule settings.
-    # first species is varied, second is fixed or varied accordingly (see vary options).
-    molecules = {
-        'K40K39a': dict_update(K40K39, {
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'color'             : 'Red',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K40K39b': dict_update(K40K39, {
-            'distance measure'  : 'cross(delta_x^,delta_p^)',
-            'gamma'             : 0.26*3,
-            'color'             : 'Green',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K40K39c': dict_update(K40K39, {
-            'distance measure'  : '<delta_x*delta_p>',
-            'gamma'             : 0.0085*2,
-            'color'             : 'Blue',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K40K39d': dict_update(K40K39, {
-            'distance measure'  : 'max|delta_xi*delta_pi|',
-            'gamma'             : 0.050*2,
-            'color'             : 'Violet',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-        'K40K39(MB)': dict_update(K40K39, {
-            'label'             : 'K40K39(MB)',
-            'T'                 : [310, 310], # use K40 TF for scaling
-            'atom_stat'         : ['MaxwellBoltzmann','MaxwellBoltzmann'],
-            'mol_stat'          : 'MaxwellBoltzmann',
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'color'             : 'Black',
-            'vary'              : vary,
-            'vary_values'       : vary_values,
-            'vary_fixed'        : vary_fixed,
-        }), 
-    }
-
-elif figure == 'timing':
-    # vary N of both species in steps of 2 for fixed Cr52 T/Tc and TLi = TCr and measure calculation time
-    # note: on my laptop (Lenovo Thinkpad E14) this takes 13-14' (9') per test on Ubuntu 22.04 LTS (Windows 10)
-    #       on Linux there is only a small difference between Lehmer64 and Lehmer128, on Windows its larger but still faster.
-    #       the actual time depends on the PC, performance settings, and if the laptop is on Battery or charging, 
-    #       and how the OS performs CPU throttling (see also 'threads' test below) and thermal management. 
-    #       A difference of 50% even on similar hardware is not unusual.
-    title = 'timing test'
-    num = 10 # number of variations
-    Nratio = 0.5 # Nc/N. larger values give longer calculation time since overlap between BEC and FG is smaller than MB and FG
-    test0 = {
-        'label'             : 'Cr52Li6_timing_Lehmer64',
-        'distance measure'  : 'delta_x*delta_p',
-        'gamma'             : 0.19*2,
-        'rng'               : 'Lehmer64',
-        'color'             : 'Gray',
-        'data_args'         : [{'color':'Orange'},{'color':'Green'},{'color':'Blue'},{'color':'Red'}],
-        'vary'              : 'N0&N1',
-        'N'                 : [128000, 128000], # maximum N of both species
-        'vary_values'       : np.array([2**(i-num+1) for i in range(num)]), # scaling of N of both species
-        'vary_fixed'        : (1-Nratio)**(1/3), # fixed T/TF or T/Tc of first species. second species T1=T0 
-        'repetitions'       : 5,    # repetitions per variation
-    }
-    test1 = test0.copy()
-    test1.update({
-        'label'             : 'Cr52Li6_timing_Lehmer128',
-        'color'             : 'Black',
-        'data_args'         : [{'color':'Orange', 'edgecolor':'Orange', 'facecolor':'White'},
-                               {'color':'Green' , 'edgecolor':'Green' , 'facecolor':'White'},
-                               {'color':'Blue'  , 'edgecolor':'Blue'  , 'facecolor':'White'},
-                               {'color':'Red'   , 'edgecolor':'Red'   , 'facecolor':'White'}],
-        'rng'               : 'Lehmer128'}
-    )
-    molecules = {
-        'Cr52Li6_timing_0': dict_update(Li6Cr52, test0, invert=True),
-        'Cr52Li6_timing_1': dict_update(Li6Cr52, test1, invert=True),
-    }
-elif figure == 'threads':
-    # perform the same calculation with different number of threads
-    # this takes about 45' on my laptop with N=75k
-    # note: this checks how much one gains by increasing number of threads and how much overhead this introduces.
-    #       for independent threads the calculation time should scale by 1/number of threads.
-    #       but for the calculation the threads must access shared data which requires synchronization of data access
-    #       and causes temporary blocking of threads and additional overhead leading to a scaling worse than 1/number of threads.
-    #       additionally, the CPU reduces the clock frequency when more cores are active which makes scaling even worse.
-    #       this depends on CPU performance setting thermal management of the hardware and the OS. 
-    title = 'thread performance test'
-    num = 8 # maximum number of threads
-    Nratio = 0.5 # Nc/N. larger values give longer calculation time since overlap between BEC and FG is smaller than MB and FG
-    molecules = {
-        'Cr52Li6_%i_threads'%(1+i) : dict_update(Li6Cr52, {
-            'label'             : 'Cr52Li6_%i_threads'%(1+i),
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.19*2,
-            'repetitions'       : 5,    # repetitions per variation
-            'vary'              : 'N0&N1',
-            'N'                 : [50000, 50000], # maximum N of both species
-            'vary_values'       : np.array([1]), # scaling of N of both species
-            'vary_fixed'        : (1-Nratio)**(1/3), # fixed T/TF or T/Tc of first species. second species T1=T0 
-            'color'             : 'Blue',
-            'data_args'         : [{'color':'Orange'},{'color':'Green'},{'color':'Blue'},{'color':'Red'}],
-            'threads'           : 1+i,
-        }, invert=True)
-    for i in range(num) }
-elif figure == 'LiCr_v1.2':
+if figure == 'LiCr_v1.2':
     # Li6Cr53 test case for comparison with v1.2 (22/4/2024)
     title = 'LiCr_v1.2_test_case'
     molecules = {
         'Li6Cr53_v1.2' : dict_update(Li6Cr53, {
             'label'             : 'Li6Cr53',
-            'atom_stat'         : ['FermiDirac','FermiDirac'], # statistics of both species            
-            'mol_stat'          : 'BoseEinstein',              # statistics of molecule
             'distance measure'  : 'delta_x*delta_p',           # former 'momentum-space'
             'rng'               : 'Lehmer64',
+            'dng'               : 'Metropolis',
             'gamma'             : 0.19*2,
-            'vary'              : 'T0=T1', # vary T/TF of Li6, TCr = TLi
+            'vary'              : 'T0=T1',          # vary T/TF of Li6, TCr = TLi
             'N'                 : [100000, 100000], # N of both species
             'T'                 : [6.322, 6.322],   # T of both species
             'f_rad'             : [100, 33.646329], # radial   trapping frequency in Hz
@@ -602,13 +167,13 @@ elif figure == 'LiCr_v1.2':
             'f_ax'              : [100, 33.646329], # axial    trapping frequency in Hz
             'vary_values'       : [6.322/404.784],  # T/TF of Li6
             'vary_fixed'        : 0.1,              # not used
-            'color'             : 'Blue',
-            'threads'           : 1,
+            'data_args'         : [{'color':'Blue'}], # color
             'repetitions'       : 1,                # repetitions per variation
-            'calc_size'         : [1.5,2.5],
+            'threads'           : 8,                # number of threads
+            'calc_size'         : [1.0,1.0],
         })
     }
-elif figure == 'test_data':
+elif figure == 'PSD-Ale':
     # comparison with test data 2023/12/11 from Alessio
     # see Results.dat and ExpConfig.dat in ./LiCr/Alessio_PSD/20240222
     # trapping frequencies and TLi are in TrapFreq.csv and Temperature.csv in ./LiCr/Alessio_PSD/20231206
@@ -680,7 +245,7 @@ elif figure == 'test_data':
             f_ax  [i] *= sc
             f_vert[i] *= sc
 
-    title = 'LiCr 2023/12/11 test data'
+    title = 'LiCr 2023/12/11 molPSD'
     molecules = {
         'MolPSD' : dict_update(mol, {
             'label'             : label,
@@ -688,115 +253,49 @@ elif figure == 'test_data':
             'mol_stat'          : 'BoseEinstein',               # statistics of molecule
             'distance measure'  : 'delta_x*delta_p',            # former 'momentum-space'
             'rng'               : 'Lehmer128',
-            'gamma'             : 0.38,                          # increased to match data
-            'vary'              : 'list',                       # direct input of data
-            'color'             : 'Blue',
+            'dng'               : 'Metropolis',
+            'gamma'             : 0.38,                         # increased to match data
+            'vary'              : 'list',                       # direct input of variation data
+            'vary_values'       : [],                           # not used. give empty list and not None
+            'vary_fixed'        : 0.0,                          # not used. give a value and not None
             'data_args'         : [{'color':'Blue'},{'color':'Orange'},{'color':'Green'}], # simulated, measured Nmol/max_pairs, measured data
-            'N'                 : None,                         # clear N of both species
-            'T'                 : None,                         # clear T of both species
-            'f_rad'             : None,                         # clear radial   trapping frequency in Hz
-            'f_vert'            : None,                         # clear vertical trapping frequency in Hz
-            'f_ax'              : None,                         # clear axial    trapping frequency in Hz
+            'N'                 : Nvar,                         # list of N of both species
+            'T'                 : Tvar,                         # list of T of both species
+            'f_rad'             : f_rad,                        # list of radial   trapping frequency in Hz of both species
+            'f_vert'            : f_vert,                       # list of vertical trapping frequency in Hz of both species
+            'f_ax'              : f_ax,                         # list of axial    trapping frequency in Hz of both species
             'threads'           : 8,                            # number of threads
-            'repetitions'       : 5,                            # repetitions per variation
-            'calc_size'         : [2.0,2.0],
+            'repetitions'       : 1,                            # repetitions per variation
+            'calc_size'         : [1.0,1.0],
         })
     }
     
-elif False:
+else:
     # custom data set
+    # use invert = True to invert first vs. second species which varies T/TF of Cr
 
-    title = 'test'
-
-    vary        = 'T0=T1'
-    vary_values = np.linspace(0.1, 1.6, 4) # scaling of T/TF 
-    vary_fixed  = None # not used
+    title = 'LiCr test'
 
     U_ratio = 0.5
     molecules = {
         'test': dict_update(Li6Cr52, {
-            'label'             : 'test',
-            'atom_stat'         : ['BoseEinstein','MaxwellBoltzmann'],  # statistics of both species            
+            'label'             : title,
             'N'                 : [50000, 50000],
             'f_rad'             : [100, 100*np.sqrt(U_ratio*6/53)], # radial (x) trap frequency in Hz
             'f_vert'            : [ 50,  50*np.sqrt(U_ratio*6/53)], # vertical (y) trap frequencies in Hz
-            'f_ax'              : [ 15,  10],   # axial (z) trap frequency in Hz
+            'f_ax'              : [ 15,  10],                       # axial (z) trap frequency in Hz
             'rng'               : 'Lehmer128',
             'dng'               : 'Metropolis',
             'distance measure'  : 'delta_x*delta_p',
             'gamma'             : 0.19*2,
-            'data_args'         : [{'color':'Red'}],
-            'vary'              : 'T0=T1', # vary-values = Li T/TF, Cr T = Li T
-            'vary_values'       : np.linspace(0.7, 1.0, 1), # Li T/TF
+            'data_args'         : [{'color':'Red'}],            # output color
+            'vary'              : 'T0=T1',                      # vary-values = first species T/TF, second species T = Li T
+            'vary_values'       : np.linspace(0.1, 1.0, 10),    # Li T/TF
             'threads'           : 8,                            # number of threads
-            'repetitions'       : 5,                            # repetitions per variation
+            'repetitions'       : 1,                            # repetitions per variation
             'calc_size'         : [1.0,1.0],                    # calculation size/energy scaling
-        }, invert=True), 
+        }, invert=False), 
     }
-
-else:
-    # custom data set
-
-    title = 'test'
-
-    molecules = {
-        'K40K40': dict_update(K40K40, {
-            'label'             : 'K40K40',
-            'rng'               : 'Lehmer128',
-            'dng'               : 'Metropolis',
-            'distance measure'  : 'delta_x*delta_p',
-            'gamma'             : 0.38,
-            'data_args'         : [{'color': 'Red'}],
-            'N'                 : [30000, 30000],   # atom number per species
-            'T'                 : [100  , 100],     # temperature in nK (might be overwritten)
-            'f_rad'             : [470, 470],       # radial (x) trap frequency in Hz
-            'f_vert'            : [470, 470],       # vertical (y) trap frequencies in Hz
-            'f_ax'              : [6.7, 6.7],       # axial (z) trap frequency in Hz
-            'vary'              : 'T0=T1',
-            'vary_values'       : np.linspace(0.1, 1.6, 16), # scaling of T/TF
-            'vary_fixed'        : None,
-            'threads'           : 8,                            # number of threads
-            'repetitions'       : 5,                            # repetitions per variation
-            'calc_size'         : [1.0,1.0],                    # calculation size/energy scaling
-        }), 
-    }
-
-# if True recalculate existing results, otherwise just plot results
-recalc = True
-
-# general output folder
-# note: relative path and '/' works also on Windows. 
-folder = './tmp/'
-#folder = './test_cases/20260827_v1.6/Greene/'
-
-# if not None generate histogram and atoms/molecule files with this filename in same folder as result file.
-# attention: files might be large and generation might take some time!
-histogram_file  = [None, '_hist.dat'    ][0]
-export_atom_0   = [None, '_atom0.csv'   ][0]
-export_atom_1   = [None, '_atom1.scv'   ][0]
-export_molecule = [None, '_molecule.csv'][0]
-
-# number of bins for histogram
-num_bins = 300
-
-# parameters for calculation of chemical potential
-error_allowed = 1e-11
-step_size     = 0.1
-
-# offset of 2nd species
-offset = [0,0,0]
-
-# if 0 stops at first matching pair (default, faster), otherwise searches nearest pair (slower)
-find_nearest = 0
-
-# show T/Tc or T/TF of second species as twin axis
-show_second_species = True
-
-# acceptable timing error in s
-t_err = 1e-3
-
-# seed values if not None. (must be within {} and ',' as separator. no spaces allowed. several values allowed, >2 not really needed )
-seed = [None, "{0x53b2c9e8,0x869c86ac}"][0]
 
 ################################################################################################
 # results to be collected from result_file
@@ -1181,7 +680,6 @@ if __name__ == '__main__':
         distance_measure        = mol_dict['distance measure']
         gamma                   = mol_dict['gamma']
         label                   = mol_dict['label']
-        #color                   = mol_dict['color']
         data_args_mol           = mol_dict['data_args']
         f_rad                   = mol_dict['f_rad']
         f_vert                  = mol_dict['f_vert']
@@ -1198,11 +696,11 @@ if __name__ == '__main__':
         try:
             N                   = mol_dict['N']
         except KeyError:
-            N                   = None
+            pass
         try:
             T                   = mol_dict['T']
         except KeyError:
-            T                   = None
+            pass
         try:            
             vary_fixed          = mol_dict['vary_fixed']
         except KeyError:
@@ -1211,11 +709,13 @@ if __name__ == '__main__':
         if label is None:
             # automatically generate a label for folder and plotting
             label = species[0]+species[1]
+        # MolConv complains about spaces in filename
+        _label = label.replace(' ', '_')
         
         # output folder
-        mol_folder = folder + label + '_' + distance_measure + '_%.1e'%gamma+'/'
-        if os.name == 'nt': 
-            mol_folder = mol_folder.replace('*','_')
+        mol_folder = folder + _label + '_' + distance_measure + '_%.1e'%gamma+'/'
+        if os.name == 'nt': # windows does not like '*' (used in distance measure)
+            mol_folder = mol_folder.replace('*','x')
 
         # single species (True) or two species (False)
         single_species = (species[0] == species[1])
@@ -1248,16 +748,16 @@ if __name__ == '__main__':
                     mol_names.append([sp0+sp1, i, j])
                 
         # parameter file used as template
-        default_parameter_file = mol_folder + label + "_params.txt"
+        default_parameter_file = mol_folder + _label + "_params.txt"
 
         # parameter file name. give '%i' for each variation.
-        parameter_file = mol_folder + label + "_params_%i.txt"
+        parameter_file = mol_folder + _label + "_params_%i.txt"
 
         # result file name. this contains all results generated by molConv for each variation
-        result_file = mol_folder + label + "_result.dat"
+        result_file = mol_folder + _label + "_result.dat"
 
         # result summary file (csv) for all variations
-        csv_file = mol_folder + label + "_result.csv"
+        csv_file = mol_folder + _label + "_result.csv"
 
         # list of parameters for each variation 
         omega_x     = [np.zeros(shape=(1,), dtype=float) for _ in range(num_species)]
@@ -1488,13 +988,13 @@ if __name__ == '__main__':
         params["result_file"]               = ["%s", result_file]
         
         if histogram_file is not None:
-            params["histogram_file"]        = ["%s", mol_folder + label + histogram_file ]
+            params["histogram_file"]        = ["%s", mol_folder + _label + histogram_file ]
         if export_atom_0 is not None:
-            params["export_atom_0"]         = ["%s", mol_folder + label + export_atom_0  ]
+            params["export_atom_0"]         = ["%s", mol_folder + _label + export_atom_0  ]
         if not single_species and export_atom_1 is not None:
-            params["export_atom_1"]         = ["%s", mol_folder + label + export_atom_1  ]
+            params["export_atom_1"]         = ["%s", mol_folder + _label + export_atom_1  ]
         if export_molecule is not None:
-            params["export_molecule"]       = ["%s", mol_folder + label + export_molecule]
+            params["export_molecule"]       = ["%s", mol_folder + _label + export_molecule]
             
         if seed is not None:
             params["seed"]                  = ["%s", seed]
@@ -1852,35 +1352,8 @@ if __name__ == '__main__':
             lm = r'%s, '%label
             ld = distance_measure_all[distance_measure]
             lg = r', $\gamma$=%.1e'%gamma
-            if figure == 'timing':
-                x = N_avg[0]
-                d            = [x, t_s_avg[0], t_s_err[0], t_s_avg[1], t_s_err[1], t_m_avg, t_m_err, t_tot_avg, t_tot_err]
-                data        += [[x, t_s_avg[0], t_s_err[0]],
-                                [x, t_s_avg[1], t_s_err[1]], 
-                                [x, t_m_avg   , t_m_err   ],
-                                [x, t_tot_avg , t_tot_err]]
-                data_labels += [lm+species[0], lm+species[1], lm+species[0] + species[1], lm+'total']
-                data_args   += data_args_mol 
 
-            elif figure == 'threads':
-                if len(data_labels) == 0:
-                    data_labels += [species[0], species[1], species[0] + species[1], 'total']
-                    data_args   += data_args_mol
-                    data         = [[[],[],[]], [[],[],[]], [[],[],[]], [[],[],[]]]
-                data[0][0] += [threads]
-                data[0][1] += [t_s_avg[0][0]]
-                data[0][2] += [t_s_err[0][0]]
-                data[1][0] += [threads]
-                data[1][1] += [t_s_avg[1][0]] 
-                data[1][2] += [t_s_err[1][0]]
-                data[2][0] += [threads]
-                data[2][1] += [t_m_avg   [0]]
-                data[2][2] += [t_m_err   [0]]
-                data[3][0] += [threads]
-                data[3][1] += [t_tot_avg [0]]
-                data[3][2] += [t_tot_err [0]]
-
-            elif figure == 'test_data':
+            if figure == 'PSD-Ale':
                 # test data list, x-axis = series number, y-axis = molecule conversion efficiency comparison calculated vs. measured
                 x = np.arange(len(emol_avg))
                 data        += [[x, emol_avg, emol_err],[x, np.array(td_N_mol)/max_pairs*100.0], [x, np.array(td_f_mol)*100.0]]
@@ -1899,68 +1372,8 @@ if __name__ == '__main__':
                     twin_args   += [{'color':args['color'], 'edgecolor':args['color'], 'facecolor':'White'} for args in data_args_mol]
 
     if result == 0:
-
-        if figure == 'timing':
-            # timing figure, x-axis = number of atoms, y-axis = calculation time
-            ax = plot(
-                    title        = title, 
-                    data         = data, 
-                    data_labels  = data_labels,
-                    data_args    = data_args, 
-                    curves       = [],   
-                    curve_labels = None,
-                    curve_args   = None, 
-                    xlabel       = 'atom number',
-                    x_range      = None,
-                    ylabel       = 'calculation time (s)',
-                    y_range      = None,
-                    log_scale    = [True,True],
-                    label_pos    = 'upper left', 
-                    label_cols   = 1,
-                    fig_size     = (10*4/3,7), # figure (width,height)
-                    fig_pos      = [0.07, 0.08, 0.92, 0.87] # sub plot (left,bottom,width,height)
-                    ) 
-
-        elif figure == 'threads':
-            # threads performance figure, x-axis = number of threads, y-axis = calculation time and gain
-            print(data)
-            ax = plot(
-                    title        = title, 
-                    data         = data, 
-                    data_labels  = data_labels,
-                    data_args    = data_args, 
-                    curves       = [],   
-                    curve_labels = None,
-                    curve_args   = None, 
-                    xlabel       = 'threads',
-                    x_range      = None,
-                    ylabel       = 'calculation time (s)',
-                    y_range      = None,
-                    log_scale    = [False,True],
-                    label_pos    = 'upper right', 
-                    label_cols   = 1,
-                    fig_size     = (10*4/3,7), # figure (width,height)
-                    fig_pos      = [0.07, 0.08, 0.87, 0.87] # sub plot (left,bottom,width,height)
-                    ) 
-            # get thread efficiency
-            twin_labels = data_labels
-            twin_args   = [{'color':da['color'], 'edgecolor':da['color'], 'facecolor':'White'} for da in data_args]
-            twin_data   = [[np.array(d[0]), (d[1][0]/np.array(d[0]))/np.array(d[1])*100.0] for d in data]
-            print(twin_args)
-            print(twin_data)
-            plot(   twin         = ax,
-                    data         = twin_data, 
-                    data_labels  = twin_labels,
-                    data_args    = twin_args, 
-                    curves       = [],   
-                    curve_labels = None,
-                    curve_args   = None, 
-                    ylabel       = 'thread performance (%)',
-                    y_range      = None,
-                    label_pos    = None,
-                    ) 
         
-        elif figure == 'test_data':
+        if figure == 'PSD-Ale':
             # test data list, x-axis = series number, y-axis = molecule conversion efficiency comparison calculated vs. measured
             ax = plot(
                     title        = title, 
