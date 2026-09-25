@@ -141,8 +141,8 @@ These statistics are implemented. For `BoseEinstein` two seperate sub-species ar
 
 Following two figures show example histograms for 100k Li6 atoms (Fermion, left) at T/TF = 17nK / 170nK = 0.1 and 100k Cr52 atoms (Boson, right) at T/Tc = 17nK / 30nK = 0.6 with 80% condensed fraction. For Li6 the position and velocity axis is 3x wider than that of Cr52. The images can be found in the [figures folder](/figures). They were created with the `molConv_dist.py` python script in the [python folder](/python).
 
-<img src="figures/Li6_histogram.png" width="400"/>
-<img src="figures/Cr52_histogram.png" width="400"/>
+<img src="figures/Li6_histogram.png" width="350"/>
+<img src="figures/Cr52_histogram.png" width="350"/>
 
 
 ## List of pairing criteria
