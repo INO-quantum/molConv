@@ -139,6 +139,10 @@ These statistics are implemented. For `BoseEinstein` two seperate sub-species ar
 | BoseEinstein             | Non-interacting BEC and thermal Bose gas, see Wolfgang Ketterle, Martin W. Zwierlein, Making, probing and understanding ultracold Fermi gases, https://arxiv.org/abs/0801.2500                                                             |
 | MaxwellBoltzman          | Thermal gas, see Refs. for other statistics                                                         |.
 
+Following two figures show example histograms for 100k Li6 atoms (Fermion, left) at T/TF = 17nK / 170nK = 0.1 and 100k Cr52 atoms (Boson, right) at T/Tc = 17nK / 30nK = 0.6 with 80% condensed fraction. For Li6 the position and velocity axis are 3x wider than that of Cr52. Larger images can be found in the [figures folder][/figures].
+<img src="figures/Li6_histogram.png" width="300"/>
+<img src="figures/Cr52_histogram.png" width="300"/>
+
 
 ## List of pairing criteria
 
@@ -154,6 +158,19 @@ These are the possibile pairing criteria which include the ones from Ref. 1.
 | <delta\_x*delta\_p>        | phase-space volume                                                             | 3                |
 | max\|delta\_xi*delta\_pi\| | all individual phase-space coordinates must match                              | 4                |
 
+
+## List of distribution generators
+
+There are only two possible distribution generators available. `Metropolis` is the default since it is much faster, but it creates a less precise distribution than the classical rejection-sampling algorithm which is extremely slow even on multiple threads. I keep both here in case one has to check the effect of the more noisy Metropolis algorithm.
+
+| distribution generator   | description                                                                                         |
+|--------------------------|-----------------------------------------------------------------------------------------------------|
+| rejection-sampling       | Original sampling method, extremely slow, but produces a very precise distribution.                 |
+| Metropolis               | Very fast sampling method, produces more variation of the samples.                                  |
+
+<!-- 
+would be nice to show here a comparison of the different distributions generated
+-->
 
 ## List of recommended random number generators
 
@@ -215,17 +232,8 @@ These are for reference and testing purposes only! They have a very limited inte
 | Lehmer32          | Original random number generator used by Florian, fast, similar or even the same as MinStd                 |
 | WELL1024          | Copied from one of my old codes, supposed to be good at that time, large internal state, needs many seed values. Passed a small size `-td` test but fails `-ti` (should be checked). |
 
-## List of distribution generators
-
-There are only two possible distribution generators available. `Metropolis` is the default since it is much faster, but it creates a less precise distribution than the classical rejection-sampling algorithm which is extremely slow even on multiple threads. I keep both here in case one has to check the effect of the more noisy Metropolis algorithm.
-
-| distribution generator   | description                                                                                         |
-|--------------------------|-----------------------------------------------------------------------------------------------------|
-| rejection-sampling       | Original sampling method, extremely slow, but produces a very precise distribution.                 |
-| Metropolis               | Very fast sampling method, produces more variation of the samples.                                  |
-
 <!-- 
-add here images of the distributions and comparsison between the two methods
+try if can reproduce the noise which I have seen with Lehmer32 and rejection sampling. this was long time ago.
 -->
 
 ## List of compile options
