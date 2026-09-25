@@ -47,14 +47,14 @@ TEST_D    = '-tD'
 TEST_n    = '-tn'
 TEST_N    = '-tN'
 TESTS     = [TEST_i, TEST_I, TEST_d, TEST_D, TEST_n, TEST_N]
-test = '-tD'
+test = '-ti'
 
 # number of repetitions (>=1)
 reps = 1
 
 # choose data size (rounded to next higher powers of 2). MB,GB,TB are valid units
 # MersenneTwister is slowest of RNG64 with 20' for 128GB
-size = "8GB"
+size = "10TB"
 
 # select list of random number generators
 # RNG64 are the default RNGs of molConv, all are good, MersenneTwister64 is the only from standard library but slower
@@ -65,7 +65,7 @@ RNG32 = ['MinStd', 'Lehmer32', 'WELL1024']
 RNG48 = ['Ranlux48']
 RNG64 = ['MersenneTwister64', 'Lehmer64', 'Lehmer128', 'Wyhash64']
 RNGS  = RNG24 + RNG32 + RNG48 + RNG64
-test_rng = ['Lehmer64']
+test_rng = ['MersenneTwister64', 'Wyhash64']
 
 # molConv path and command line (%s=test, %s=generator, seed added later)
 # molConv outputs molConv_ok on stderr before generating output on stdout

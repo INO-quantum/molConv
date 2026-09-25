@@ -1,31 +1,94 @@
 #!/usr/local/bin/python3
 
-# checks distribution in histograms and atoms/molecule files
+# plots distribution in histograms and atoms/molecule files
 # run molConv_run.py and export histograms and atoms/molecules files
 # give here parameter file name and repetition number (>=1) to be analyzed
 # plots distribution of all atoms and molecule obtained from histogram files or/and atoms files
 # and compares with expected distribution using parameter file.
 # if load_atoms == True generates additionally histogram directly from atoms/molecule files.
-# last changed 22/9/2026 by andi
+# last changed 23/9/2026 by Andi
 
 # TODO: at the moment reads only histogram files and does not load atoms csv files
 
-param_file  = './tmp/test_delta_x*delta_p_3.8e-01/test_params_0.txt'
+param_file  = './tmp/LiCr_test_delta_x*delta_p_3.8e-01/LiCr_test_params_0.txt'
 repetition  = 1
 load_atoms  = False # has no effect at the moment!
+
+# statistics
+stat_FD = 'FermiDirac'
+stat_BE = 'BoseEinstein'
+stat_MB = 'MaxwellBoltzmann'
+
+# sub species identifier for Bose gas
+sub_thermal = '(thermal)'
+sub_BEC     = '(condensed)'
 
 # figure identifier
 fig_x = 'position'
 fig_v = 'velocity'
 fig_E = 'energy'
 
-# figures and species to be plotted. None = all
-fig_sel     = [fig_x, fig_v]
-fig_species = ['Li6', 'Cr52']
+# figures and species to be plotted. None = all, [] = none
+fig_sel     = [] #[fig_x, fig_v, fig_E]
+fig_species = ['Li6', 'Cr52'] #['Li6', 'Cr52', 'Li6Cr52(thermal)', 'Li6Cr52(condensed)']
+
+# points for theory curves. keep not too big since polylog is a bit slow
+points = 100
+
+# if not None show classic thermal gas (MaxwellBoltzmann) for comparison with this label added
+show_thermal = '(th. gas)'
+
+# if True make a nice overview figure for selected species
+show_panels = True
+
+# select which panels to show (top to bottom)
+panels = [fig_E, fig_x, fig_v]
+
+# if not None scale panels to data range with this relative margin 
+# when not None plots panel with y-axis in log scale, otherwise not
+scale_to_data = 0.05 # 0.05
+
+# panel customization
+def panel_adjust(species_name):
+    if species_name == 'Li6':
+        title     = species_name + ' (Fermion) histogram'
+        xrange    = {fig_E:[0.5, 6e2], fig_x:[-330,330], fig_v:[-30, 30]}
+        yrange    = {fig_E:[0.5, 5e5], fig_x:[0.5, 5e5], fig_v:[0.5, 5e5]}
+        label_pos = {fig_E:['upper right',(0.97, 0.97), 2],
+                     fig_x:['upper right',(0.97, 0.97), 3],
+                     fig_v:['upper right',(0.97, 0.97), 3]}
+    elif species_base_name == 'Cr52':
+        title     = species_name + ' (Boson) histogram'
+        xrange    = {fig_E:[0.5, 6e2], fig_x:[-110,110], fig_v:[-10,10]}
+        yrange    = {fig_E:[0.5, 5e5], fig_x:[0.5, 5e5], fig_v:[0.5, 5e5]}
+        label_pos = {fig_E:['upper right', (0.97, 0.97), 3],
+                     fig_x:['upper right', (0.97, 0.97), 5],
+                     fig_v:['upper right', (0.97, 0.97), 5]}
+    else:
+        title     = species_name + ' histogram'
+        xrange    = {fig:None for fig in panels}
+        yrange    = {fig:None for fig in panels}
+        label_pos = {fig:['upper left',(1.01, 1.04)] for fig in panels}
+    return [title, xrange, yrange, label_pos]
+    
+# displayed sub-species names in panel labels
+def panel_label(species_name, sub_name):
+    if sub_name == species_name + sub_thermal:
+        label = 'BEC (th.)'
+    elif sub_name == species_name + sub_BEC:
+        label = 'BEC (cond.)'
+    elif sub_name == species_name + show_thermal:
+        label = 'thermal gas'
+    elif sub_name == species_name:
+        label = species_name
+    else:
+        print('unrecognized sub-species?', sub_name)
+        exit()
+    return label
+
 
 from molConv_run import plot
 import numpy as np
-#from numpy.random import uniform, randint, normal, multivariate_normal
 import os
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -87,12 +150,15 @@ hist_header = [
     ]
 hist_header_entry   = [h[0] for h in hist_header]
 hist_units          = [h[1] for h in hist_header]
-hist_colum_index          = [h[2] for h in hist_header]
-hist_colum_name     = [h[3] for h in hist_header]
+hist_column_index   = [h[2] for h in hist_header]
+hist_column_name    = [h[3] for h in hist_header]
 hist_colors         = [h[4] for h in hist_header]
 hist_figure         = [h[5] for h in hist_header]
 hist_header_len     = len(set([h for h in hist_header_entry if h is not None])) + 3
-hist_num_cols       = len([h for h in hist_colum_index if h is not None])
+hist_num_cols       = len([h for h in hist_column_index if h is not None])
+
+# convert text units to Latex labels
+unit_to_label = {'nK': r'nK', 'um': r'$\mu$m', 'mm/s': r'mm/s'}
 
 def load_params(filename, skip=['//', '#'], max_lines=None):
     "loads paramaters as dictionary from file skipping all lines starting with skip until max_lines reached"
@@ -166,19 +232,19 @@ def Tcrit_(N, omega_bar):
     #      zeta_3=Li_3(1) must be inside sqrt.
     return omega_bar*((N/zeta)**(1.0/3.0))*k_nK; # nK. k_nK = (hbar*1e9)/kB
 
-dist_func  = {'FermiDirac'             : FermiDirac, 
-              'BoseEinstein'           : BoseEinstein_thermal, 
-              'BoseEinstein(thermal)'  : BoseEinstein_thermal,
-              'BoseEinstein(condensed)': BoseEinstein_condensed, 
-              'MaxwellBoltzmann'       : MaxwellBoltzmann       }
-Tcrit_func = {'FermiDirac'             : TFermi, 
-              'BoseEinstein'           : Tcrit_, 
-              'MaxwellBoltzmann'       : lambda N,omega_bar: 0.0}
+dist_func  = {stat_FD             : FermiDirac, 
+              stat_BE             : BoseEinstein_thermal, 
+              stat_BE+sub_thermal : BoseEinstein_thermal,
+              stat_BE+sub_BEC     : BoseEinstein_condensed, 
+              stat_MB             : MaxwellBoltzmann       }
+Tcrit_func = {stat_FD             : TFermi, 
+              stat_BE             : Tcrit_, 
+              stat_MB             : lambda N,omega_bar: 0.0}
     
 def ChemicalPotential(info, dist, N, T, omega, mass, error_mu=1e-3, error_N=0.1, error_Emax = 1.0, epsilon_N=None, error_Nint=0.01, error_BECfrac=0.01, kdE=0.8, tmax=5.0, show=False):
     # get chemical potential such that integrating distribution gives atom number N
     # info          = species name used for printing
-    # dist          = 'MaxwellBoltzmann' or 'MB', 'FermiDirac' or 'FD', 'BoseEinstein' or 'BE', 'BEC'
+    # dist          = stat_FD, stat_BE or stat_MB
     # N             = atom number
     # T             = temperature in nK
     # omega         = trap frequency [x,y,z] in rad/s
@@ -219,12 +285,12 @@ def ChemicalPotential(info, dist, N, T, omega, mass, error_mu=1e-3, error_N=0.1,
     # thermal size = Gauss sigma
     Rth = np.sqrt(T/(k_Epot*mass))/omega  # um. [1/2*kB*T = m*omega^2*x^2/2]
     
-    if dist == 'MB' or dist == 'MaxwellBoltzmann': # Maxwell-Boltzmann: mu = Tc = 0.0
+    if dist == stat_MB: # Maxwell-Boltzmann: mu = Tc = 0.0
         Emax = T*np.log(N/epsilon_N)
         if show is not None:
             print(info, '%s: mu = 0.0, Emax = %.3f' % (dist, Emax))
         return 0.0, 0.0, N, Rth, 0.0, Emax
-    elif dist == 'FD' or dist == 'FermiDirac': # Fermi-Dirac: Tc = EF
+    elif dist == stat_FD: # Fermi-Dirac: Tc = EF
         dist_func = FermiDirac
         Tc = TFermi(N, omega_bar); # nK
         Rc = np.sqrt(2.0*T/(k_Epot*mass))/omega  # Radius in Polylog in um. [kB*T = m*omega^2*x^2/2]
@@ -233,7 +299,7 @@ def ChemicalPotential(info, dist, N, T, omega, mass, error_mu=1e-3, error_N=0.1,
         dE = Tc # initial energy steps
         limit = Tc # limit mu <= TF. Natoms should be still reached.
         Emax = Tc+T
-    elif dist == 'BE' or dist == 'BEC' or dist == 'BoseEinstein': # Bose-Einstein: Tc, mu <= 0
+    elif dist == stat_BE: # Bose-Einstein: Tc, mu <= 0
     
         dist_func = BoseEinstein_thermal
         Tc = Tcrit_(N, omega_bar); # nK
@@ -306,7 +372,7 @@ def ChemicalPotential(info, dist, N, T, omega, mass, error_mu=1e-3, error_N=0.1,
         while True:
             x = np.arange(0, Emax, dE)
             Nold = Nint
-            if mu == 0.0 and (dist == 'BE' or dist == 'BEC'): 
+            if mu == 0.0 and (dist == stat_BE): 
                 # E=0 gives 1/0. excess atoms = BEC fraction
                 x=x[1:]
             Nint = np.sum(x*x*dist_func(x, T, mu, Emin))*dE*k
@@ -352,10 +418,10 @@ def ChemicalPotential(info, dist, N, T, omega, mass, error_mu=1e-3, error_N=0.1,
             above = False
         loops_mu += 1
 
-    if dist == 'FD':
+    if dist == stat_FD:
         Rx = np.sqrt(2*Tc/(k_Epot*mass))/omega  # um. [kB*T = m*omega^2*x^2/2]
         print(info, '%s: T/TF = %.3f nK / %.3f nK = %.3f, N = %.3f' % (dist, T, Tc, T/Tc, N))
-    elif dist == 'BE' or dist == 'BEC':
+    elif dist == stat_BE:
         Rx = np.sqrt(2*Tc/(k_Epot*mass))/omega  # um. [kB*T = m*omega^2*x^2/2]
         if True: #mu == 0.0: # BEC
             # T <= Tc
@@ -366,7 +432,7 @@ def ChemicalPotential(info, dist, N, T, omega, mass, error_mu=1e-3, error_N=0.1,
             if show is not None or not ok:
                 show = None # stop further output
                 print(info, '%s: mu = %.3f nK +/- %.3e nK, Nc/N = %.1f/%.1f = %.3f, Emax = %.3f (%i/%i mu/Emax loops, %.1f ms)' % (dist, mu, dE, N - Nint, Nint, (N - Nint)/N, Emax, loops_mu, loops_Emax, (datetime.now()-t_start).total_seconds()*1000))
-                print(info, '%s: T/Tc = %.3f, Nc/N = %.3f, expected %.3f, error %.1e (%s)' % (dist, T/Tc, Nc/N, frac, np.abs(Nc/N-frac), 'ok' if ok else 'error'))
+                print(info, '%s: T/Tc = %.3f / %.3f = %.3f, Nc/N = %.3f, expected %.3f, error %.1e (%s)' % (dist, T, Tc, T/Tc, Nc/N, frac, np.abs(Nc/N-frac), 'ok' if ok else 'error'))
             if not ok: exit()
             if mu == 0 and Nint > N:
                 print(info, "%s error: for mu = 0 unexpected negative BEC fraction! Nth > Tc" % (dist))
@@ -386,7 +452,10 @@ def ChemicalPotential(info, dist, N, T, omega, mass, error_mu=1e-3, error_N=0.1,
     
 def Etot(info, dist, N, T, mu, Emax, Emin, bins):
     # returns total energy distribution in harmonic trap
-    x = np.linspace(0, Emax, bins)
+    if isinstance(bins, (list, tuple, np.ndarray)):
+        x = np.array(bins)
+    else:
+        x = np.linspace(0, Emax, bins)
     y = x*x*dist_func[dist](x, T, mu, Emin)
     dx = x[1]-x[0]
     y_norm = (dx*np.sum(y)*num_bins)/(Emax*N)
@@ -395,17 +464,21 @@ def Etot(info, dist, N, T, mu, Emax, Emin, bins):
     print(info, 'Etot y_norm           = %.3f' % y_norm)
     return [x, y/y_norm]
             
-def profiles(info, dist, velocity, N, T, mu, mass, omega, xmax, bins, points):
+def profiles(info, dist, velocity, N, T, mu, mass, omega, xmax, dx, bins, points):
     # generate [x,y,z] or [vx,vy,vz] profiles velocity == False/True
     # this requires mpmath.polylog and is a bit slow
+    # xmax = +/-maximum range used for plotting
+    # dx   = step size between bins for each coordinate
+    # bins = number of bins used to obtain histogram. this is used to scale counts to match the histogram.
+    # points = number of points to plot. calculation is a bit slow, so do not use too many points.
     print(info, 'calculating', dist, 'profiles ...')
 
     prof = [None, None, None]
     
-    if dist == 'FermiDirac' or dist == 'BoseEinstein(thermal)':
+    if dist == stat_FD or dist == stat_BE+sub_thermal:
         # FD has - sign in front of exp while BEC has positive sign. rest is the same.
         # note: this is inverse sign of energy distribution functions!
-        sign = -1 if dist == 'FermiDirac' else +1
+        sign = -1 if dist == stat_FD else +1
         # cloud size in um. note: this is not Sigma! which is without factor 2!
         R = np.sqrt(2.0*T/(k_Epot*mass))/omega
 
@@ -416,14 +489,14 @@ def profiles(info, dist, velocity, N, T, mu, mass, omega, xmax, bins, points):
 
         for i in range(3):
             x = np.linspace(-xmax[i], xmax[i], points) # um or mm/s
-            dx = x[1]-x[0]
-
+            #dx = x[1]-x[0]
+            
             yi = np.array([float(re(sign*polylog(5/2,sign*np.exp(mu/T-(xi/R[i])**2)))) for xi in x])
             area = R[i]*np.sqrt(np.pi)*float(re(sign*polylog(3, sign*np.exp(mu/T))))
             
-            prof[i] = [x, yi*N*dx/area*points/bins]        
+            prof[i] = [x, yi*N*dx[i]/area*points/bins]        
     
-    elif dist == 'BoseEinstein(condensed)':
+    elif dist == stat_BE+sub_BEC:
 
         if np.abs(mu) <= 1e-3:
             # non-interacting BEC (harmonic oscillator ground state): 2x integration Equ. 38 Ketterle, MPU
@@ -432,17 +505,17 @@ def profiles(info, dist, velocity, N, T, mu, mass, omega, xmax, bins, points):
 
             if velocity: 
                 # map to velocity space
-                # note: this does not collapse all axes on top of each other
+                # note: this does NOT collapse all axes on top of each other!
                 Rc *= omega*np.sqrt(k_Epot/k_Ekin)
 
             for i in range(3):
                 x = np.linspace(-xmax[i], xmax[i], points) # um or mm/s
-                dx = x[1]-x[0]
+                #dx = x[1]-x[0]
                         
                 # theoretical profile along one spatial coordinate (integrated other 2 coordinates)
                 y1d = np.exp(-(x/Rc[i])**2) 
                 
-                prof[i] = [x, y1d*N/(Rc[i]*np.sqrt(np.pi))*dx*points/bins]
+                prof[i] = [x, y1d*N/(Rc[i]*np.sqrt(np.pi))*dx[i]*points/bins]
         else:
             # interacting BEC (Thomas-Fermi): 2x integration Equ. 40 Ketterle, MPU
             # interacting size in mu.
@@ -456,14 +529,14 @@ def profiles(info, dist, velocity, N, T, mu, mass, omega, xmax, bins, points):
 
             for i in range(3):
                 x = np.linspace(-xmax[i], xmax[i], points) # um or mm/s
-                dx = x[1]-x[0]
+                #dx = x[1]-x[0]
                         
                 # theoretical profile along one spatial coordinate (integrated other 2 coordinates)
                 y1d = np.max(1.0-(x/Rc[i])**2, 0)**(3.0/2.0) 
                 
-                prof[i] = [x, y1d*10*N/(3*np.sqrt(np.pi)**(3.0/2.0)*Rc[i])*dx*points/bins]
+                prof[i] = [x, y1d*10*N/(3*np.sqrt(np.pi)**(3.0/2.0)*Rc[i])*dx[i]*points/bins]
     
-    elif dist == 'MaxwellBoltzmann':
+    elif dist == stat_MB:
         # cloud size in um
         sigma = np.sqrt(T/(k_Epot*mass))/omega
 
@@ -477,15 +550,15 @@ def profiles(info, dist, velocity, N, T, mu, mass, omega, xmax, bins, points):
 
         for i in range(3):
             x = np.linspace(-xmax[i], xmax[i], points) # um or mm/s
-            dx = x[1]-x[0]
+            #dx = x[1]-x[0]
                     
             # theoretical profile along one spatial coordinate (integrated other 2 coordinates)
             y1d = np.exp(-0.5*(x/sigma[i])**2)
             
-            prof[i] = [x, y1d*n3d*2.0*np.pi*sigma[(i+1)%3]*sigma[(i+2)%3]*dx*points/bins]
+            prof[i] = [x, y1d*n3d*2.0*np.pi*sigma[(i+1)%3]*sigma[(i+2)%3]*dx[i]*points/bins]
 
     else:
-        print(info, 'profile for ', dist, 'not implemented!')
+        print(info, 'profile for', dist, 'not implemented!')
         exit()
 
     return prof
@@ -520,7 +593,7 @@ if __name__ == '__main__':
         fy          += [   params['fy_1'            ][0]]
         fz          += [   params['fz_1'            ][0]]
     mol_name         = ''.join(species)
-    mol_statistics   = [   params['statistics_mol'  ][0]]
+    mol_statistics   =     params['statistics_mol'  ][0] 
     distance_measure =     params['distance_measure'][0]
     gamma            =     params['gamma'           ][0]
     
@@ -562,58 +635,129 @@ if __name__ == '__main__':
             exit()
         hist_file = '.'.join(split[:-1])
         hist_ext  = split[-1]
-        
-        species_list = []
+    
+        # get list of species  
+        # list contains [species index, species name, atom/molecule number, statistics, linked species name for MB or None]
+        atoms_list = []
+        MB_list    = []
         for sp in range(num_species):
-            if statistics[sp] == 'BoseEinstein':
+            if statistics[sp] == stat_BE:
                 Nc = int(np.round(N[sp]*(1.0-(TTcrit[sp])**3)))
                 if Nc <= 0:
-                    species_list.append([sp, species[sp]+'(thermal)', N[sp], statistics[sp]+'(thermal)'])
+                    name = sub_thermal
+                    atoms_list .append([sp, species[sp]+name, N[sp], statistics[sp]+name, None])
+                    link = species[sp]+name
+                    #Nth  = N[sp]
                 else:
                     if N[sp] - Nc > 0:
-                        species_list.append([sp, species[sp]+'(thermal)', N[sp]-Nc, statistics[sp]+'(thermal)'])
+                        name = sub_thermal
+                        atoms_list.append([sp, species[sp]+name, N[sp]-Nc, statistics[sp]+name, None])
+                        link = species[sp]+name
+                        #Nth  = N[sp]
                     if Nc > 0:
-                        species_list.append([sp, species[sp]+'(condensed)', Nc, statistics[sp]+'(condensed)'])
+                        name = sub_BEC
+                        atoms_list.append([sp, species[sp]+name, Nc, statistics[sp]+name, None])
+                        if N[sp] - Nc <= 0:
+                            link = species[sp]+name
+                            #Nth  = Nc
             else:
-                species_list.append([sp, species[sp], N[sp], statistics[sp]])
+                atoms_list.append([sp, species[sp], N[sp], statistics[sp], None])
+                link = species[sp]
+                #Nth  = N[sp]
+            if show_thermal:
+                MB_list.append([sp, species[sp]+show_thermal, N[sp], stat_MB, link])
         
-        hist_data = [{} for _ in range(num_species+1)]
-        for sp, species_name, species_N, species_stat in species_list:
-            if fig_species is None or species[sp] in fig_species:
+        # add list of molecules = combinations of species
+        mol_list = []
+        for sp0 in atoms_list:
+            for sp1 in atoms_list:
+                if sp0[0] < sp1[0]: 
+                    mol_list.append([[sp0[0], sp1[0]], sp0[1]+sp1[1], 0, mol_statistics, None])
 
+        print('atoms    :', [sp [1] for sp  in atoms_list])
+        print('molecules:', [mol[1] for mol in mol_list  ])
+        print()
+        
+        species_list = atoms_list + mol_list + MB_list
+        hist_data   = {sp[1]:{} for sp in species_list} # species data for each hist column name
+        hist_curves = {sp[1]:{} for sp in species_list} # species theory curves for each hist column name (if available)
+        for species_list_entry in species_list:
+            sp, species_name, species_N, species_stat, species_link = species_list_entry # entry allows to insert species_N into mol_list
+            
+            is_molecule = isinstance(sp, (list, tuple))
+            species_base_name = species_name if is_molecule else species[sp]
+            
+            if fig_species is None or species_base_name in fig_species:
+            
+                # histogram available
                 # header contains max values used to scale data
-                f = hist_file + '_' + species_name + '_' + str(repetition) + '.' + hist_ext
+                f = hist_file + '_' + (species_name if species_link is None else species_link) + '_' + str(repetition) + '.' + hist_ext
                 print(species_name, 'loading histogram file header', f, ' ...')
                 header = load_params(f, skip=[], max_lines=hist_header_len)
 
-                stat  =     header['// stat'    ][0]            
-                rep   = int(header['// rep'     ][0])
-                N_    = int(header['// N'       ][0])
-                T_    =     header['// T'       ][0]
-                mu_   =     header['// mu'      ][0]
-                xmax  =     header['// max x'   ][0]
-                ymax  =     header['// max y'   ][0]
-                zmax  =     header['// max z'   ][0]
-                vxmax =     header['// max vx'  ][0]
-                vymax =     header['// max vy'  ][0]
-                vzmax =     header['// max vz'  ][0]
-                Emax  =     header['// max Etot'][0]
+                species_stat_ =     header['// stat'    ][0]            
+                species_rep   = int(header['// rep'     ][0])
+                species_N_    = int(header['// N'       ][0])
+                species_T     =     header['// T'       ][0]
+                species_mu    =     header['// mu'      ][0]
+                species_xmax  =     header['// max x'   ][0]
+                species_ymax  =     header['// max y'   ][0]
+                species_zmax  =     header['// max z'   ][0]
+                species_vxmax =     header['// max vx'  ][0]
+                species_vymax =     header['// max vy'  ][0]
+                species_vzmax =     header['// max vz'  ][0]
+                species_Emax  =     header['// max Etot'][0]
 
-                if i < num_species and (                                \
-                         stat    != species_stat     or \
-                         rep     != repetition       or \
-                         N_      != species_N        or \
-                   round(T_ , 3) != round(T [sp], 3) or \
-                   round(mu_, 2) != round(mu[sp], 2) 
-                   ):
-                    print(species_name, 'histogram file inconsistent with parameter file!')
-                    print('statistics:', stat, "vs.", species_stat)
-                    print('repetition:', rep , "vs.", repetition)
-                    print('N         :', N_  , "vs.", species_N)
-                    print('T         :', T_  , "vs.", T[sp])
-                    print('mu        :', mu_ , "vs.", mu[sp])
-                    exit()
-                
+                if species_link is None:
+                    if species_stat_ != species_stat     or \
+                       species_rep   != repetition       :
+                        print(species_name, 'histogram file inconsistent with parameter file!')
+                        print('statistics:', species_stat_, "vs.", species_stat)
+                        print('repetition:', species_rep  , "vs.", repetition)
+                        exit()
+
+                    if is_molecule:
+                        # we get from histogram N, T, and mu and mass, omega, omega_bar we can calculate
+                        # Epot = m0*w0^2*x^2/2+m1*w1^2*x^2/2 = (m0*w0^2+m1*w1^2)*x^2/2 =(m0+m1)*<w>^2*x^2 
+                        # -> <w> = sqrt((m0*w0^2+m1*w1^2)/(m0+m1))
+                        if species_N_ == 0:
+                            print(species_name, 'zero molecules found (skip)')
+                            continue
+                        species_N         = species_N_
+                        species_mass      = mass[sp[0]] + mass[sp[1]]
+                        species_omega     = np.sqrt((mass[sp[0]]*omega[sp[0]]**2+mass[sp[1]]*omega[sp[1]]**2)/species_mass)
+                        species_omega_bar = (species_omega[0]*species_omega[1]*species_omega[2])**(1.0/3.0)
+                        # insert species_N back into mol_list
+                        species_list_entry[2] = species_N
+                    else:
+                        if species_N_           != species_N        or \
+                           round(species_T , 3) != round(T [sp], 3) or \
+                           round(species_mu, 2) != round(mu[sp], 2) :
+                            print(species_name, 'histogram file (atoms) inconsistent with parameter file!')
+                            print('N         :', species_N_ , "vs.", species_N)
+                            print('T         :', species_T  , "vs.", T[sp])
+                            print('mu        :', species_mu , "vs.", mu[sp])
+                            exit()
+                        species_mass      = mass     [sp]
+                        species_omega     = omega    [sp]
+                        species_omega_bar = omega_bar[sp]
+                else:
+                    # linked species might have different N and statistics
+                    if species_rep          != repetition       or \
+                       species_N            != N[sp]            or \
+                       round(species_T , 3) != round(T [sp], 3) or \
+                       round(species_mu, 2) != round(mu[sp], 2) :
+                        print(species_name, 'histogram file (atoms) inconsistent with parameter file!')
+                        print('N         :', species_N  , "vs.", N[sp])
+                        print('rep       :', species_rep, "vs.", repetition)
+                        print('T         :', species_T  , "vs.", T[sp])
+                        print('mu        :', species_mu , "vs.", mu[sp])
+                        exit()
+                    species_mass      = mass     [sp]
+                    species_omega     = omega    [sp]
+                    species_omega_bar = omega_bar[sp]
+                                
+                # check units
                 for h in hist_header:
                     key,unit = h[:2]
                     if key is not None and header[key][1] != unit:
@@ -639,71 +783,108 @@ if __name__ == '__main__':
                     
                 # save each data column separately with scaling as defined in header
                 # position and momentum are symmetric, energy is single-sided.
-                data         = {label:[] for label in hist_figure if label is not None}
-                data_labels  = {label:[] for label in hist_figure if label is not None}
-                data_args    = {label:[] for label in hist_figure if label is not None}
-                curves       = {label:[] for label in hist_figure if label is not None}
-                curve_labels = {label:[] for label in hist_figure if label is not None}
-                curve_args   = {label:[] for label in hist_figure if label is not None}
-                for j,col in enumerate(hist_colum_index):
+                data         = {label:[]   for label in hist_figure if label is not None}
+                data_labels  = {label:[]   for label in hist_figure if label is not None}
+                data_args    = {label:[]   for label in hist_figure if label is not None}
+                data_unit    = {label:None for label in hist_figure if label is not None}
+                curves       = {label:[]   for label in hist_figure if label is not None}
+                curve_labels = {label:[]   for label in hist_figure if label is not None}
+                curve_args   = {label:[]   for label in hist_figure if label is not None}
+                for j,col in enumerate(hist_column_index):
                     if col is not None and hist_header_entry[j] is not None:
                         label = hist_figure[j] # figure
                         max_  = header[hist_header_entry[j]][0] # maximum value
                         rng   = [0, max_] if hist_units[j] == 'nK' else [-max_, max_]
+                        if data_unit[label] is None:
+                            data_unit[label] = hist_units[j]
+                        elif data_unit[label] != hist_units[j]:
+                            print(species_name, label, "inconsistent unit '%s' != '%s'" % (data_unit[label], hist_units[j]))
+                            exit()
                         xj = np.linspace(rng[0], rng[1], num_bins+1)
                         xj = (xj[1:] + xj[0:-1])/2 # center of bins
                         yj = hist[col] # histogram counts
-                        hist_data[sp][hist_colum_name[j]]  = [xj, yj] # data for each species and column
+                        if species_link is None:
+                            hist_data[species_name][hist_column_name[j]] = [xj, yj] # data for each species and hist column
                         if label is not None: # save plot data
                             data        [label] += [[xj, yj]]
-                            data_labels [label] += [species_name + ' ' + hist_colum_name[j]]
+                            data_labels [label] += [species_name + ' ' + hist_column_name[j]]
                             data_args   [label] += [{'color':hist_colors[j]}]
-                            
-                # add theory curves
-                if fig_sel is None or fig_E in fig_sel:
-                    Emin = 0.5*omega_bar[sp]*k_nK
-                    curves      [fig_E] += [Etot(species_name, species_stat, species_N, T[sp], mu[sp], Emax, Emin, num_bins)]
-                    curve_labels[fig_E] += [species_name + ' Etot']
-                    curve_args  [fig_E] += [{'color': 'Red'}]
+
+                # energy theory curve [Etot]
+                # TODO: load color from hist_color
+                species_Emin = 0.5*species_omega_bar*k_nK
+                if scale_to_data is not None: 
+                    # scale to data range where count > 0
+                    x,y = hist_data[species_name if species_link is None else species_link]['Etot']
+                    index = np.where(y > 0)
+                    rng = [x[index][0], x[index][-1]]
+                    bins = np.linspace(max(rng[0]-(rng[1]-rng[0])*scale_to_data, species_Emin), 
+                                           rng[1]+(rng[1]-rng[0])*scale_to_data, num_bins)
+                else:
+                    bins = num_bins
+                curve = Etot(species_name, species_stat, species_N, species_T, 
+                             species_mu, species_Emax, species_Emin, bins)
+                curves      [fig_E] += [curve]
+                curve_labels[fig_E] += [species_name + ' Etot']
+                curve_args  [fig_E] += [{'color': 'Red'}]
+                hist_curves[species_name]['Etot'] = curve
+            
+                # position theory curves [x,y,z]
+                # TODO: load color from hist_color
+                if scale_to_data is not None: 
+                    # scale to data range where count > 0
+                    xmax = [0,0,0]
+                    for i,label in enumerate(['x', 'y', 'z']):
+                        x,y = hist_data[species_name if species_link is None else species_link][label]
+                        index = np.where(y > 0)
+                        if xmax[i] < abs(x[index][-1]): xmax[i] = abs(x[index][-1])
+                else:
+                    xmax = [species_xmax, species_ymax, species_zmax]    
+                curve = profiles(species_name, species_stat, False, species_N, species_T, species_mu, 
+                                 species_mass, species_omega, xmax,
+                                 [species_xmax*2/(points-1), species_ymax*2/(points-1), species_zmax*2/(points-1)],
+                                 num_bins, points=points)
+                curves      [fig_x] += curve
+                curve_labels[fig_x] += [species_name + ' x', species_name + ' y', species_name + ' z']
+                curve_args  [fig_x] += [{'color': 'Red'}, {'color': 'Blue'}, {'color': 'Green'}]
+                hist_curves[species_name]['x'] = curve[0]
+                hist_curves[species_name]['y'] = curve[1]
+                hist_curves[species_name]['z'] = curve[2]
                 
-                if fig_sel is None or fig_x in fig_sel:
-                    curves      [fig_x] += profiles(species_name, species_stat, False, species_N, T[sp], mu[sp], mass[sp], omega[sp], [xmax, ymax, zmax], num_bins, points=100)
-                    curve_labels[fig_x] += [species_name + ' x', species_name + ' y', species_name + ' z']
-                    curve_args  [fig_x] += [{'color': 'Red'}, {'color': 'Blue'}, {'color': 'Green'}]
-                    
-                    if True: # add thermal gas profile for comparison
-                        name = species[sp] + '(MB)'
-                        curves      [fig_x] += profiles(name, 'MaxwellBoltzmann', False, species_N, T[sp], mu[sp], mass[sp], omega[sp], [xmax, ymax, zmax], num_bins, points=100)
-                        curve_labels[fig_x] += [name + ' x', name + ' y', name + ' z']
-                        curve_args  [fig_x] += [{'color': 'Red'  , 'linestyle':'dashed'}, 
-                                                {'color': 'Blue' , 'linestyle':'dashed'}, 
-                                                {'color': 'Green', 'linestyle':'dashed'}]
-                    
-                if fig_sel is None or fig_v in fig_sel:
-                    curves      [fig_v] += profiles(species_name, species_stat, True, species_N, T[sp], mu[sp], mass[sp], omega[sp], [vxmax, vymax, vzmax], num_bins, points=100)
-                    curve_labels[fig_v] += [species_name + ' vx', species_name + ' vy', species_name + ' vz']
-                    curve_args  [fig_v] += [{'color': 'Red'}, {'color': 'Blue'}, {'color': 'Green'}]
-                    
-                    if True: # add thermal gas profile for comparison
-                        name = species[sp] + '(MB)'
-                        curves      [fig_v] += profiles(name, 'MaxwellBoltzmann', True, species_N, T[sp], mu[sp], mass[sp], omega[sp], [vxmax, vymax, vzmax], num_bins, points=100)
-                        curve_labels[fig_v] += [name + ' vx', name + ' vy', name + ' vz']
-                        curve_args  [fig_v] += [{'color': 'Red'  , 'linestyle':'dashed'}, 
-                                                {'color': 'Blue' , 'linestyle':'dashed'}, 
-                                                {'color': 'Green', 'linestyle':'dashed'}]
+                # velocity theory curve
+                # TODO: load color from hist_color
+                if scale_to_data is not None: 
+                    # scale to data range where count > 0
+                    xmax = [0,0,0]
+                    for i,label in enumerate(['vx', 'vy', 'vz']):
+                        x,y = hist_data[species_name if species_link is None else species_link][label]
+                        index = np.where(y > 0)
+                        if xmax[i] < abs(x[index][-1]): xmax[i] = abs(x[index][-1])
+                else:
+                    xmax = [species_vxmax, species_vymax, species_vzmax]
+                curve = profiles(species_name, species_stat, True, species_N, species_T, species_mu, 
+                                 species_mass, species_omega, xmax,
+                                 [species_vxmax*2/(points-1), species_vymax*2/(points-1), species_vzmax*2/(points-1)],
+                                 num_bins, points=points)
+                curves      [fig_v] += curve
+                curve_labels[fig_v] += [species_name + ' vx', species_name + ' vy', species_name + ' vz']
+                curve_args  [fig_v] += [{'color': 'Red'}, {'color': 'Blue'}, {'color': 'Green'}]
+                hist_curves[species_name]['vx'] = curve[0]
+                hist_curves[species_name]['vy'] = curve[1]
+                hist_curves[species_name]['vz'] = curve[2]
                 
                 # plot data for each species and selected label
                 for label in data.keys():
                     if label is not None and (fig_sel is None or label in fig_sel):
                         plot(
-                            title        = species[sp] + ' histogram ' + label, 
+                            title        = species_name + ' ' + label, 
                             data         = data        [label], 
                             data_labels  = data_labels [label],
                             data_args    = data_args   [label], 
                             curves       = curves      [label],   
                             curve_labels = curve_labels[label],
                             curve_args   = curve_args  [label], 
-                            xlabel       = label,
+                            xlabel       = label + (' (%s)'%unit_to_label[data_unit[label]]),
                             x_range      = None,
                             ylabel       = 'count',
                             y_range      = None,
@@ -712,7 +893,69 @@ if __name__ == '__main__':
                             fig_size     = (10*4/3,7), # figure (width,height)
                             fig_pos      = [0.07, 0.08, 0.87, 0.87] # sub plot (left,bottom,width,height)
                             ) 
+                            
+        if show_panels:
+            # overview figure for each fig_species with panels
+            fig_species_names = [sp[1] for sp in species_list] if fig_species is None else fig_species
+            for species_base_name in fig_species_names:
+
+                # find all sub-species names with same base name
+                sub_list = []
+                for sp, species_name, species_N, species_stat, species_link in species_list:
+                    is_molecule = isinstance(sp, (list, tuple))
+                    species_base_name_ = species_name if is_molecule else species[sp]
+                    if species_base_name_ == species_base_name:
+                        sub_list.append(species_name)
+                        
+                print(species_base_name, sub_list)
                 
+                ax = None
+                for i,fig in enumerate(panels):
+                
+                    # get list of rows in hist_header for colors and units
+                    rows = []
+                    for row,f in enumerate(hist_figure):
+                        if f == fig:
+                            rows.append(row)
+                                
+                    title, xrange, yrange, label_pos = panel_adjust(species_base_name)    
+
+                    left   = 0.075
+                    width  = 1-left-0.01
+                    bottom = 0.05
+                    height = 1-bottom-0.035
+                    gap    = 0.060
+                    h      = (height-(len(panels)-1)*gap)/len(panels)
+                    b      = bottom + (len(panels)-i-1)*(h+gap)
+                            
+                    ax = plot( 
+                        ax           = ax,
+                        title        = title if ax is None else None, 
+                        data         = [hist_data[sp][hist_column_name[r]] 
+                                        for sp in sub_list for r in rows if hist_column_name[r] in hist_data[sp]], 
+                        data_labels  = ['%s %s'%(panel_label(species_base_name, sp), hist_column_name[r]) 
+                                        for sp in sub_list for r in rows if hist_column_name[r] in hist_data[sp]],
+                        data_args    = [{'color'    :hist_colors[r], 
+                                         'facecolor':[hist_colors[r],'White','Gray'][j],
+                                         'edgecolor':hist_colors[r]
+                                        } for j,sp in enumerate(sub_list) for r in rows if hist_column_name[r] in hist_data[sp]], 
+                        curves       = [hist_curves[sp][hist_column_name[r]] 
+                                        for sp in sub_list for r in rows if hist_column_name[r] in hist_curves[sp]],   
+                        curve_labels = ['%s %s'%(panel_label(species_base_name, sp), hist_column_name[r]) 
+                                        for sp in sub_list for r in rows if hist_column_name[r] in hist_curves[sp]],
+                        curve_args   = [{'color':hist_colors[r], 
+                                         'linestyle':['solid','dashed','dotted'][j],
+                                        } for j,sp in enumerate(sub_list) for r in rows if hist_column_name[r] in hist_curves[sp]], 
+                        xlabel       = fig + (' (%s)'%unit_to_label[data_unit[fig]]),
+                        x_range      = xrange[fig],
+                        ylabel       = 'count',
+                        y_range      = yrange[fig],
+                        log_scale    = [True, True] if fig==fig_E else [False, scale_to_data],
+                        label_pos    = label_pos[fig],
+                        fig_size     = (10,10), # figure (width,height)
+                        fig_pos      = [left, b, width, h] # sub plot (left,bottom,width,height)
+                        ) 
+                            
         plt.show()
             
 

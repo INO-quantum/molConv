@@ -37,7 +37,7 @@ folder = './tmp/'
 
 # if not None generate histogram and atoms/molecule files with this filename in same folder as result file.
 # attention: files might be large and generation might take some time!
-histogram_file  = [None, '_hist.dat'    ][0]
+histogram_file  = [None, '_hist.dat'    ][1]
 export_atom_0   = [None, '_atom0.csv'   ][0]
 export_atom_1   = [None, '_atom1.scv'   ][0]
 export_molecule = [None, '_molecule.csv'][0]
@@ -280,7 +280,7 @@ else:
     molecules = {
         'test': dict_update(Li6Cr52, {
             'label'             : title,
-            'N'                 : [50000, 50000],
+            'N'                 : [100000, 100000],
             'f_rad'             : [100, 100*np.sqrt(U_ratio*6/53)], # radial (x) trap frequency in Hz
             'f_vert'            : [ 50,  50*np.sqrt(U_ratio*6/53)], # vertical (y) trap frequencies in Hz
             'f_ax'              : [ 15,  10],                       # axial (z) trap frequency in Hz
@@ -290,7 +290,7 @@ else:
             'gamma'             : 0.19*2,
             'data_args'         : [{'color':'Red'}],            # output color
             'vary'              : 'T0=T1',                      # vary-values = first species T/TF, second species T = Li T
-            'vary_values'       : np.linspace(0.1, 1.0, 10),    # Li T/TF
+            'vary_values'       : np.linspace(0.1, 1.0, 1),    # Li T/TF
             'threads'           : 8,                            # number of threads
             'repetitions'       : 1,                            # repetitions per variation
             'calc_size'         : [1.0,1.0],                    # calculation size/energy scaling
@@ -335,9 +335,9 @@ def plot(data, data_labels, curves, curve_labels, data_args=None, curve_args=Non
             fig_size=(7*4/3,7), fig_pos=[0.08, 0.07, 0.91, 0.87],
             xticks=None, xlabel=None, ylabel=None, 
             x_range=None, y_range=None, log_scale=None,
-            label_pos='upper right', label_cols=1,
+            label_pos=['upper right', (0.97, 0.97), 1],
             bitmap=None, bm_args={},
-            twin=None):
+            twin=None, ax=None):
     """
     plot data and curves with given labels.
     data         = list of [[x0,y0],[x1,y1],...] plotted as data points
@@ -352,15 +352,19 @@ def plot(data, data_labels, curves, curve_labels, data_args=None, curve_args=Non
     xticks       = list of [[ticks],[labels]] for x-axis
     bitmap       = 2d bitmap of pixels
     bm_args      = dictionary with bitmap arguments
+    label_pos    = list with label anchor position, label coordinates, number of columns (optional) 
     twin         = if not None give axis returned by previoys plot and all data is plotted on twin axis
+    ax           = if not None adds data to same same figure. this allows to create panels.
     """
     if twin is not None:
         ax = twin.twinx()
-    else:
+    elif ax is None:
         fig = plt.figure(figsize=fig_size) #size in inches (width,height)
         ax = fig.add_axes(fig_pos)
+    else:
+        ax = ax.figure.add_axes(fig_pos)
 
-    if title is not None: ax.set_title(title, fontsize=14)
+    if title  is not None: ax.set_title(title, fontsize=14)
     if xlabel is not None: ax.set_xlabel(xlabel, fontsize=14, labelpad=5)
     if ylabel is not None: ax.set_ylabel(ylabel, fontsize=14, labelpad=5)
 
@@ -450,13 +454,11 @@ def plot(data, data_labels, curves, curve_labels, data_args=None, curve_args=Non
             ax.plot(d[0], d[1], label=curve_labels[i], **args)
 
     if label_pos is not None:
-        label_xy = {'upper right' : (0.97, 0.97), 
-                    'upper left'  : (0.03, 0.97),
-                    'upper center': (0.50, 0.97),
-                    'center right': (0.97, 0.50),  
-                    'lower left'  : (0.03, 0.05), 
-                    'lower right' : (0.97, 0.03),
-                    'lower center': (0.50, 0.03)}[label_pos]
+        if len(label_pos) == 2:
+            label_pos, label_xy = label_pos
+            label_cols = 1
+        else:
+            label_pos, label_xy, label_cols = label_pos
         ax.legend(bbox_to_anchor=label_xy, loc=label_pos, frameon=True, fontsize=10, ncol=label_cols, framealpha=0.5)
     
     #plt.savefig(title + '.png', dpi=300, transparent=False, bbox_inches='tight')
@@ -1388,7 +1390,7 @@ if __name__ == '__main__':
                     ylabel       = 'conversion efficiency (%)',
                     y_range      = None,
                     log_scale    = [False,True],
-                    label_pos    = 'upper left', 
+                    label_pos    = ['upper left', (0.03, 0.97)],
                     label_cols   = 1,
                     fig_size     = (10*4/3,7), # figure (width,height)
                     fig_pos      = [0.07, 0.08, 0.92, 0.87] # sub plot (left,bottom,width,height)
@@ -1407,7 +1409,7 @@ if __name__ == '__main__':
                     x_range      = [-0.05,1.65],
                     ylabel       = 'efficiency (%)', #'efficiency (%' + (', solid symbols)' if show_second_species and num_species == 2 else ')'),
                     y_range      = [-5,105],
-                    label_pos    = 'upper right', 
+                    label_pos    = ['upper right', (0.97, 0.97)], 
                     label_cols   = 1,
                     fig_size     = (10*4/3,7), # figure (width,height)
                     fig_pos      = [0.07, 0.08, 0.87, 0.87] # sub plot (left,bottom,width,height)
